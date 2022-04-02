@@ -1,9 +1,3 @@
-#!/usr/bin/env python3 -u
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree.
 from __future__ import print_function
 
 import argparse
@@ -25,7 +19,7 @@ from models.densenet_group import DenseNet, Bottleneck
 import models
 from utils import progress_bar
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Distillation')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
@@ -39,8 +33,7 @@ parser.add_argument('--epoch', default=200, type=int,
 parser.add_argument('--no-augment', dest='augment', action='store_false',
                     help='use standard augmentation (default: True)')
 parser.add_argument('--decay', default=1e-4, type=float, help='weight decay')
-parser.add_argument('--alpha', default=-1., type=float,
-                    help='mixup interpolation coefficient (default: 1)')
+
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
@@ -130,28 +123,6 @@ criterion = nn.CrossEntropyLoss()
 #optimizer = optim.Adam(net.parameters()) # USE ADAM TO REGAIN THE ACCURACY
 optimizer = optim.SGD(net.parameters(), 0.001, momentum=0.9,weight_decay=args.decay) #USE AFTER REGAINING FOR A FEW EPOCHS
 
-
-def mixup_data(x, y, alpha=1.0, use_cuda=True):
-    '''Returns mixed inputs, pairs of targets, and lambda'''
-    if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
-    else:
-        lam = 1
-
-    batch_size = x.size()[0]
-    if use_cuda:
-        index = torch.randperm(batch_size).cuda()
-    else:
-        index = torch.randperm(batch_size)
-
-    mixed_x = lam * x + (1 - lam) * x[index, :]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam
-
-
-def mixup_criterion(criterion, pred, y_a, y_b, lam):
-    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
-
 divergence_loss_fn = nn.KLDivLoss(reduction="batchmean")
 
 def train(epoch):
@@ -165,10 +136,6 @@ def train(epoch):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
 
-        inputs, targets_a, targets_b, lam = mixup_data(inputs, targets,
-                                                    args.alpha, use_cuda)
-        inputs, targets_a, targets_b = map(Variable, (inputs,
-                                                    targets_a, targets_b))
         outputs = net(inputs)
         outputs_master= master(inputs)
 
@@ -177,13 +144,11 @@ def train(epoch):
             F.softmax(outputs , dim=1)
         )
 
-        loss = 0.6*mixup_criterion(criterion, outputs, targets_a, targets_b, lam) + abs(distillation_loss)
+        loss = 0.6*criterion(outputs,targets) + abs(distillation_loss)
         train_loss += loss.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += (lam * predicted.eq(targets_a.data).cpu().sum().float()
-                        + (1 - lam) * predicted.eq(targets_b.data).cpu().sum().float())
-
+        correct += predicted.eq(targets.data).cpu().sum().float()
 
         optimizer.zero_grad()
         loss.backward()
@@ -202,6 +167,7 @@ def test(epoch,net=net):
     test_loss = 0
     correct = 0
     total = 0
+
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
             if use_cuda:

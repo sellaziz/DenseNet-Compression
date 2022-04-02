@@ -1,0 +1,3 @@
+# DenseNet-Compression / Pruning
+The pruning is done on a distilled neural network so the KDLoss is still used with the basic criterion (CrossEntropyLoss). 
+To prune the neural network, we do a unstructured, iterative, global pruning. The pruning rate is arbitrary, the lower the better but the longer it takes to prune. Training is done after each iteration to regain 90% test accuracy. If 50 epochs are not sufficient, it stops. Else it continues.

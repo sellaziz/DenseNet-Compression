@@ -1,0 +1,3 @@
+[submodule "training/mixup-cifar10"]
+	path = training/mixup-cifar10
+	url = https://github.com/sellaziz/mixup-cifar10.git

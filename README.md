@@ -4,10 +4,14 @@ MicroNet Compression Challenge on DenseNet for CIFAR-10 (for Deep Learning Compr
 First we tried to tinker with the hyperparameters to get the lower MicroNet Score and get an accuracy over 90% (while keeping 1 or 2% to allow us other ways of compressing the network)
 # Our Final Results 
 
-![Results](resources\score_comp.png)
+![Results](resources/score_comp.png)
+
 x is MobileNet and MobileNetv2, other are DenseNet (with growth rate as legend)
 
-![Best Results](resources\score_comp_best.png)
+
+Best Results
+
+![Best Results](resources/score_comp_best.png)
 
 
 
